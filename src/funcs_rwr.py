@@ -47,6 +47,7 @@ def prep_all_rwr_results(
     # Prep all nodes as seeds
     seed_list = list(background_network.nodes())
     seed_list.sort()
+    all_nodes_list = seed_list.copy()
 
     #   Split seed list for reference to recall the result from each seed later
     seed_list_pieces = split_to_size_n(seed_list, 100)
@@ -82,4 +83,4 @@ def prep_all_rwr_results(
     reference_df = pd_from_listolist(reference_df_listolist, colnames=reference_df_cols)
     pd_to_csv(reference_df, f'{cur_res_dir}/reference.csv')
 
-    return 
+    return all_nodes_list

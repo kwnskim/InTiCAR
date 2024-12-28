@@ -31,6 +31,8 @@ def run_inticor(**kwargs):
     genes_of_interest_list = acquire_list_from_file(genes_of_interest_list_dir)
     itcs_list = acquire_list_from_file(itcs_list_dir); itcs_list.sort()
     disgenes_df = csv_to_pd(disgenes_df_dir)
+    diseases_list, disgenes_df = prep_diseases_n_disgenes(disgenes_df)
+    rwr_base_med = 2.2883992816268055e-05
 
     """ Prep dirs """
     res_upper_dir = "../results"
@@ -43,13 +45,17 @@ def run_inticor(**kwargs):
     cur_res_dir_rwr = f'{cur_res_dir}/A_rwr_collection'
     create_dir_if_absent(cur_res_dir_rwr)
 
-    prep_all_rwr_results(background_network_dir, cur_res_dir, cur_res_dir_rwr, parallel_num)
+    all_nodes_list = \
+        prep_all_rwr_results(background_network_dir, cur_res_dir, cur_res_dir_rwr, parallel_num)
 
     """ Compare RWR values at the diseases genes from ITCs and Random genes """
     cur_res_dir_comparison = f'{cur_res_dir}/B_comparison'
     create_dir_if_absent(cur_res_dir_comparison)
 
-    compare_rwr_at_dg_from_itcs_rgs(cur_res_dir, cur_res_dir_rwr, cur_res_dir_comparison, itcs_list)
+    compare_rwr_at_dg_from_itcs_rgs(
+        cur_res_dir, cur_res_dir_rwr, cur_res_dir_comparison, 
+        itcs_list, all_nodes_list, diseases_list, disgenes_df,
+        rwr_base_med, parallel_num)
 
     return 
 

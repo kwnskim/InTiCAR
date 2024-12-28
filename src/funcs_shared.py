@@ -80,3 +80,30 @@ def pd_from_dict_keyasindex(giv_dict, colnames, key_as_index=True):
 
 def multiple_horizontal_concat(df_list):
     return pd.concat(df_list, axis=1)
+
+
+def acquire_file_list_in_dir(cur_dir, full_dir=True):
+
+    if full_dir:
+        file_path_list = \
+            [os.path.join(cur_dir, ct) 
+                for ct in os.listdir(cur_dir) 
+                    if os.path.isfile(os.path.join(cur_dir, ct))]
+
+        return file_path_list
+    
+    else: 
+        file_name_list = \
+            [ct for ct in os.listdir(cur_dir)
+                if os.path.isfile(os.path.join(cur_dir, ct))]
+        
+        return file_name_list
+    
+
+def prep_diseases_n_disgenes(disgenes_df):
+
+    # Split the genes into list before moving on :)
+    disgenes_df['Genes'] = disgenes_df['Genes'].apply(lambda x: x.split(';;'))
+    diseases_list = disgenes_df['Disease'].values.tolist()
+
+    return diseases_list, disgenes_df
