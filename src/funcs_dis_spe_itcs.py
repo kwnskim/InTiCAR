@@ -346,7 +346,13 @@ def random_normalize_itcs_rwr(
 
 def get_diseases_for_each_ioc(input_list):
 
+    sl, dis_df_norm_sig = input_list
+    
+    cur_sl_df = dis_df_norm_sig[[sl]]
 
+    dis_df_norm_sig_sl = cur_sl_df[sl].values.tolist()
+    dis_df_norm_sig_sl_modz = modified_zscore(dis_df_norm_sig_sl)
+    cur_sl_df['modified_zscore'] = dis_df_norm_sig_sl_modz
 
     return cur_sl_df
 
@@ -463,12 +469,12 @@ def compare_rwr_at_dg_from_itcs_rgs(
     
     pool = Pool(parallel_num)
     gdei_input_listolist = \
-        [[sl, dis_df_norm_sig] for sl in seed_list]
+        [[itl, dis_df_norm_sig] for itl in itcs_list]
     cur_sl_df_list = \
         pool.map(get_diseases_for_each_ioc, gdei_input_listolist)
     
     diseases_per_ioc_df_dict = \
-        {seed_list[csdlind]: csdl for csdlind, csdl in enumerate(cur_sl_df_list)}
+        {itcs_list[csdlind]: csdl for csdlind, csdl in enumerate(cur_sl_df_list)}
     
     save_as_pickle(diseases_per_ioc_df_dict, dis_for_each_ioc_dir_dataframe)
 

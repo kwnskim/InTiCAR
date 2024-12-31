@@ -1,6 +1,7 @@
 import os
 import pickle as pk
 import pandas as pd
+import numpy as np
 
 from pathlib import Path
 from datetime import datetime
@@ -107,3 +108,18 @@ def prep_diseases_n_disgenes(disgenes_df):
     diseases_list = disgenes_df['Disease'].values.tolist()
 
     return diseases_list, disgenes_df
+
+
+def modified_zscore(data, consistency_correction=1.4826):
+    
+    median = np.median(data)
+    deviation_from_med = np.array(data) - median
+    mad = np.median(np.abs(deviation_from_med))
+
+    if mad != 0:
+        mod_zscore = deviation_from_med/(consistency_correction*mad)
+    else: 
+        meanad = np.mean(np.abs(deviation_from_med))
+        mod_zscore = deviation_from_med/(1.253314*meanad)
+
+    return mod_zscore
