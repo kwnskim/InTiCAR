@@ -22,6 +22,7 @@ def run_inticor(**kwargs):
     background_network_dir = kwargs['background_network']
     genes_of_interest_list_dir = kwargs['disease_genes_of_interest']
     disgenes_df_dir = kwargs['disease_genes_full_collection']
+    zthres = kwargs['modified_z_threshold']
     parallel_num = kwargs['parallel_num']
 
     """ Prep variables """
@@ -51,10 +52,11 @@ def run_inticor(**kwargs):
     cur_res_dir_comparison = f'{cur_res_dir}/B_comparison'
     create_dir_if_absent(cur_res_dir_comparison)
 
-    compare_rwr_at_dg_from_itcs_rgs(
-        cur_res_dir, cur_res_dir_rwr, cur_res_dir_comparison, 
-        itcs_list, all_nodes_list, diseases_list, disgenes_df,
-        rwr_base_med, parallel_num)
+    dis_to_ioc_df_dict = \
+        compare_rwr_at_dg_from_itcs_rgs(
+            cur_res_dir, cur_res_dir_rwr, cur_res_dir_comparison, 
+            itcs_list, all_nodes_list, diseases_list, disgenes_df,
+            rwr_base_med, zthres, parallel_num)
 
     return 
 
@@ -80,6 +82,10 @@ if __name__ == '__main__':
                             help="Provide the directory with collection of genes for all available diseases",
                             type=str, default='../prep_files/DiseaseGenes_parsed.csv')
 
+    parser.add_argument("-t", "--modified_z_threshold", 
+                        help="Provide the threshold for modified z-score",
+                        type=int, default=5)
+    
     parser.add_argument("-p", "--parallel_num", 
                             help="Provide a number of cores to use for parallel processing",
                             type=int, default=50)

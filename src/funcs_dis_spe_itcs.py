@@ -344,23 +344,51 @@ def random_normalize_itcs_rwr(
     return rwr_disgenes_sum_vals_df_normalized
 
 
-def get_diseases_for_each_ioc(input_list):
+def get_diseases_for_each_itc(input_list):
 
-    sl, dis_df_norm_sig = input_list
+    sl, disgenes_rwr_norm_df = input_list
     
-    cur_sl_df = dis_df_norm_sig[[sl]]
+    cur_sl_df = disgenes_rwr_norm_df[[sl]]
 
-    dis_df_norm_sig_sl = cur_sl_df[sl].values.tolist()
-    dis_df_norm_sig_sl_modz = modified_zscore(dis_df_norm_sig_sl)
-    cur_sl_df['modified_zscore'] = dis_df_norm_sig_sl_modz
+    disgenes_rwr_norm_df_sl = cur_sl_df[sl].values.tolist()
+    disgenes_rwr_norm_df_sl_modz = modified_zscore(disgenes_rwr_norm_df_sl)
+    cur_sl_df['modified_zscore'] = disgenes_rwr_norm_df_sl_modz
 
     return cur_sl_df
+
+
+def get_itcs_df_for_each_disease(input_list):
+    
+    # Deal with input
+    cur_dis, diseases_per_itc_df_dict, itcs_list = input_list
+
+    cur_dis_sl_df_list = list()
+
+    for sl in itcs_list:
+
+        if sl not in diseases_per_itc_df_dict:
+            continue
+
+        sl_diseases_df = diseases_per_itc_df_dict[sl]
+        cur_sd_mask = sl_diseases_df.index == cur_dis
+        cur_sd_df = sl_diseases_df[cur_sd_mask]
+
+        # For modZ
+        cur_sd_df_modz = cur_sd_df[['modified_zscore']]
+        cur_sd_df_modz.rename(columns={'modified_zscore': sl}, inplace=True)
+        cur_sd_df_modz = cur_sd_df_modz.T 
+        
+        cur_dis_sl_df_list.append(cur_sd_df_modz)
+    
+    cur_dis_sl_df = multiple_vertical_concat(cur_dis_sl_df_list)
+
+    return cur_dis_sl_df
 
 
 def compare_rwr_at_dg_from_itcs_rgs(
         cur_res_dir, cur_res_dir_rwr, cur_res_dir_comparison, 
         itcs_list, all_nodes_list, diseases_list, disgenes_df, 
-        rwr_base_med, parallel_num):
+        rwr_base_med, zthres, parallel_num):
 
     """ Prep dirs """
     #   RWR dataframe collection
@@ -467,15 +495,40 @@ def compare_rwr_at_dg_from_itcs_rgs(
     """ Find disease-specific ITCs """
     report_time(f'Acquiring ITCs with relatively high normalized-RWR values for each disease')
     
+    # Compare between diseases based on modified Z-score
+    dis_for_each_itc_dir_dataframe = \
+        f'{dis_spe_itcs_dir}/modz_diseases_for_each_ITC_dataframe.pickle'
+    
     pool = Pool(parallel_num)
     gdei_input_listolist = \
-        [[itl, dis_df_norm_sig] for itl in itcs_list]
+        [[itl, disgenes_rwr_norm_df] for itl in itcs_list]
     cur_sl_df_list = \
-        pool.map(get_diseases_for_each_ioc, gdei_input_listolist)
+        pool.map(get_diseases_for_each_itc, gdei_input_listolist)
     
     diseases_per_ioc_df_dict = \
         {itcs_list[csdlind]: csdl for csdlind, csdl in enumerate(cur_sl_df_list)}
     
-    save_as_pickle(diseases_per_ioc_df_dict, dis_for_each_ioc_dir_dataframe)
+    save_as_pickle(diseases_per_ioc_df_dict, dis_for_each_itc_dir_dataframe)
+    
+    # Re-organize to find ITCs per disease
+    itc_for_each_dis_dir_dataframe_norm = \
+        f'{dis_spe_itcs_dir}/specific_ITCs_for_each_disease_dataframe.pickle'
 
-    return
+    pool = Pool(parallel_num)
+    gid_input_listolist = \
+        [[cur_dis, diseases_per_ioc_df_dict, itcs_list] 
+            for cur_dis in diseases_list]
+    gid_df_list = \
+        pool.map(get_itcs_df_for_each_disease, gid_input_listolist)
+
+    dis_to_ioc_df_dict = \
+        {cur_dis: gid_df_list[cdind] 
+            for cdind, cur_dis in enumerate(diseases_list)}
+
+    save_as_pickle(dis_to_ioc_df_dict, itc_for_each_dis_dir_dataframe_norm)
+    
+    # Apply threshold
+    report_time(f'  Applying the z-threshold')
+    
+
+    return dis_to_ioc_df_dict
