@@ -9,7 +9,7 @@ import argparse
 
 from funcs_shared import *
 from funcs_rwr import *
-from funcs_comparison import *
+from funcs_dis_spe_itcs import *
 
 os.chdir('.')
 sys.path.append('../')
@@ -21,7 +21,6 @@ def run_inticor(**kwargs):
     """ Prep kwargs """
     background_network_dir = kwargs['background_network']
     genes_of_interest_list_dir = kwargs['disease_genes_of_interest']
-    itcs_list_dir = kwargs['intertissue_communicators']
     disgenes_df_dir = kwargs['disease_genes_full_collection']
     parallel_num = kwargs['parallel_num']
 
@@ -76,10 +75,6 @@ if __name__ == '__main__':
     parser.add_argument("-g", "--disease_genes_of_interest", 
                             help="Provide the directory with the list of genes related to the disease of interest",
                             type=str, default='../prep_files/example_genes_of_interest.csv')
-    
-    parser.add_argument("-t", "--intertissue_communicators", 
-                            help="Provide the directory with the list of inter-tissue communicators in ENSG format",
-                            type=str, default='../prep_files/example_itcs.csv')
 
     parser.add_argument("-d", "--disease_genes_full_collection", 
                             help="Provide the directory with collection of genes for all available diseases",

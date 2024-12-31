@@ -1,7 +1,6 @@
 import sys
 import random
-import pandas as pd
-import networkx as nx
+import numpy as np
 
 from multiprocessing import Pool
 from funcs_shared import *
@@ -223,34 +222,133 @@ def save_rwr_dis_df_vals_overthres(
 
 def acquire_random_for_cur_dis(input_list):
 
-    disgenes_list, cur_ind, rwr_quant_thres, \
-    rand_rwr_seed_save_raw_dir, \
-    rand_rwr_seed_save_raw_dir_disgenes_dis, \
-    rand_rwr_seed_save_raw_dir_disgenes_overthres_dis = input_list
+    disgenes_list, cur_ind, \
+        rand_rwr_seed_save_raw_dir, \
+        rand_rwr_seed_save_raw_dir_disgenes_dis = input_list
 
     cur_rand_ind = str(cur_ind).zfill(4)
 
-    rand_rwr_df_dir_overquant = \
-        f'{rand_rwr_seed_save_raw_dir_disgenes_overthres_dis}/{cur_rand_ind}_RWR.csv'
+    cur_random_rwr_res_df_dir = \
+        f'{rand_rwr_seed_save_raw_dir}/{cur_rand_ind}_RWR.csv'
+    cur_rand_rwr_df_dir = \
+        f'{rand_rwr_seed_save_raw_dir_disgenes_dis}/{cur_rand_ind}_RWR.csv'
 
-    if not check_if_file_exists(rand_rwr_df_dir_overquant):
+    if not check_if_file_exists(cur_rand_rwr_df_dir):
 
         # Import the result for RWR for this round of random
-        cur_random_rwr_res_df_dir = \
-            f'{rand_rwr_seed_save_raw_dir}/{cur_rand_ind}_RWR.csv'
         cur_random_rwr_df = csv_to_pd(cur_random_rwr_res_df_dir, indcol=0)
 
-        cur_random_rwr_df_dis_overthres = \
-            save_rwr_dis_df_vals_overthres(
-                cur_rand_ind, cur_random_rwr_df, disgenes_list, rwr_quant_thres,
-                rand_rwr_seed_save_raw_dir_disgenes_dis,
-                rand_rwr_seed_save_raw_dir_disgenes_overthres_dis)
+        #   RWR values for the disease genes from the target seeds
+        cur_random_rwr_df_dis = \
+            get_rwr_for_giv_genes(cur_random_rwr_df, disgenes_list)
+        
+        #   Save for further use:
+        pd_to_csv(cur_random_rwr_df_dis, cur_rand_rwr_df_dir, inbool=True)
 
     else:
         #   Acquire the previously saved dataframe
-        cur_random_rwr_df_dis_overthres = csv_to_pd(rand_rwr_df_dir_overquant, indcol=0)
+        cur_random_rwr_df_dis = csv_to_pd(cur_rand_rwr_df_dir, indcol=0)
     
-    return cur_random_rwr_df_dis_overthres
+    return cur_random_rwr_df_dis
+
+
+def collect_random_for_cur_dis(
+        dis, rand_rwr_seed_save_raw_dir, rand_rwr_seed_save_raw_dir_disgenes, disgenes_list, parallel_num):
+
+    rand_rwr_seed_save_raw_dir_disgenes_dis = \
+        f"{rand_rwr_seed_save_raw_dir_disgenes}/{dis}"
+    create_dir_if_absent(rand_rwr_seed_save_raw_dir_disgenes_dis)
+
+    input_listolist = \
+        [[disgenes_list, cur_ind, 
+            rand_rwr_seed_save_raw_dir, 
+            rand_rwr_seed_save_raw_dir_disgenes_dis] 
+                for cur_ind in range(100)]
+
+    pool = Pool(parallel_num)
+    rand_rwr_norm_df_list = \
+        pool.map(acquire_random_for_cur_dis, input_listolist)
+
+    return rand_rwr_norm_df_list
+
+
+def acquire_random_rwr_dis_sum_vals(input_list):
+
+    # Parse input
+    dis, cur_random_rwr_dis_df = input_list
+
+    #   Get rid of "random genes" that are also one of the disease genes
+    cur_dgs = cur_random_rwr_dis_df.index.tolist()
+    cur_random_rwr_dis_df_cols = cur_random_rwr_dis_df.columns.tolist()
+    cur_random_rwr_dis_df_cols_wo_cur_dgs = \
+        [crr for crr in cur_random_rwr_dis_df_cols if crr not in cur_dgs]
+    cur_random_rwr_dis_df = \
+        cur_random_rwr_dis_df[cur_random_rwr_dis_df_cols_wo_cur_dgs]
+
+    # Finalize by summing up the values at the disease genes for comparison
+    cur_random_rwr_dis_df.loc[dis] = cur_random_rwr_dis_df.sum()
+    cur_random_rwr_dis_sum_vals_list = \
+        cur_random_rwr_dis_df.loc[[dis]].values.tolist()[0]
+
+    return cur_random_rwr_dis_sum_vals_list
+
+
+def random_normalize_itcs_rwr(
+        dis, itcs_list, itcs_rwr_df_dis_overthres, rand_rwr_norm_df_list, parallel_num):
+
+    rwr_disgenes_sum_vals_df_list = list()
+    rwr_random_sum_vals_average_dict = dict()
+
+    #       Normalize with random
+    for cur_itc in itcs_list:
+        
+        # Prep the values for the given ITC
+        rwr_df_dis_cur_itc = itcs_rwr_df_dis_overthres[[cur_itc]]
+        rwr_df_dis_cur_itc.dropna(inplace=True)
+        rwr_df_dis_cur_itc.loc[dis] = rwr_df_dis_cur_itc.sum()
+        cur_itc_rwr_disgenes_sum = rwr_df_dis_cur_itc.loc[[dis]]
+        rwr_disgenes_sum_vals_df_list.append(cur_itc_rwr_disgenes_sum)
+
+        # Prep the values from the random genes
+        cur_itc_rwr_random_sum_vals_list = list()
+
+        input_listolist = \
+            [[dis, cur_random_rwr_dis_df]
+                for cur_random_rwr_dis_df in rand_rwr_norm_df_list]
+
+        pool = Pool(parallel_num)
+        cur_itc_cur_random_rwr_dis_sum_vals_list = \
+            pool.map(acquire_random_rwr_dis_sum_vals, input_listolist)
+        
+        for cur_itc_cur_random_rwr_sum_vals in cur_itc_cur_random_rwr_dis_sum_vals_list:
+            cur_itc_rwr_random_sum_vals_list = \
+                cur_itc_rwr_random_sum_vals_list + cur_itc_cur_random_rwr_sum_vals
+        
+        #   Deal with the collection of mean vals
+        cur_itc_rwr_random_sum_vals_average = \
+            np.mean(cur_itc_rwr_random_sum_vals_list)
+        rwr_random_sum_vals_average_dict[cur_itc] = \
+            cur_itc_rwr_random_sum_vals_average
+    
+    # Orgainze the result from all ITCs
+    rwr_disgenes_sum_vals_df = multiple_horizontal_concat(rwr_disgenes_sum_vals_df_list)
+
+    # Normalize with the average values from random, then add to collection
+    rwr_disgenes_sum_vals_df_normalized = rwr_disgenes_sum_vals_df.copy()
+
+    for cur_itc in itcs_list:
+        rwr_disgenes_sum_vals_df_normalized[cur_itc] = \
+            rwr_disgenes_sum_vals_df_normalized[cur_itc].apply(
+                lambda x: x/rwr_random_sum_vals_average_dict[cur_itc])
+
+    return rwr_disgenes_sum_vals_df_normalized
+
+
+def get_diseases_for_each_ioc(input_list):
+
+
+
+    return cur_sl_df
 
 
 def compare_rwr_at_dg_from_itcs_rgs(
@@ -283,9 +381,13 @@ def compare_rwr_at_dg_from_itcs_rgs(
     rand_rwr_seed_save_raw_dir_disgenes_overthres = f"{rand_rwr_seed_save_dir}/DiseaseGenes_Overthres"
     create_dir_if_absent(rand_rwr_seed_save_raw_dir_disgenes_overthres)
 
-    #   RWR comparison collection
-    comparison_collection_dir = f"{cur_res_dir_comparison}/RWR_Comparison_Collection"
+    #   Normalized RWR
+    comparison_collection_dir = f"{cur_res_dir_comparison}/RWR_Normalized"
     create_dir_if_absent(comparison_collection_dir)
+
+    #   Disease-specific ITCs
+    dis_spe_itcs_dir = f"{cur_res_dir_comparison}/RWR_Normalized_Disease_Specific_ITCs"
+    create_dir_if_absent(dis_spe_itcs_dir)
 
     """ Prep RWR from all acquired from A """
     rwr_file_temp = f'{cur_res_dir_rwr}/RWR_result_dict_##cur_num##.pickle'
@@ -306,49 +408,68 @@ def compare_rwr_at_dg_from_itcs_rgs(
         rand_rwr_seed_save_raw_dir, random_pool_list, len_itcs_list, 
             rwr_file_temp, rwr_res_all_ref_df, parallel_num)
     
-    """ Work on each disease to acquire RWR values over threshold at disease genes, and save """
+    """ Work on each disease to acquire normalized RWR values over threshold at disease genes, and save """
     len_diseases_list = len(diseases_list)
-    for disind, dis in enumerate(diseases_list):
+    disgenes_rwr_norm_df_list = list()
+    disgenes_rwr_norm_df_list_dir = f'{comparison_collection_dir}/RWR_IOCs_per_disease_normalized.csv'
 
-        if disind % 20 == 0:
-            report_time(f'  Currently working on {disind}-th disease {dis} (Out of {len_diseases_list})')
+    report_time(f"Working towards acquiring the normalized RWR values")
 
-        #   Acquire disease gene list
-        disgenes_list = \
-            get_disease_related_genes(disgenes_df, dis)
+    if not check_if_file_exists(disgenes_rwr_norm_df_list_dir):
         
-        #       Check if none of the disease genes exist in the network
-        check_disgenes = set(all_nodes_list).intersection(set(disgenes_list))
+        for disind, dis in enumerate(diseases_list):
 
-        if len(check_disgenes) == 0:
-            report_time(f'  No disease genes in the current network for {dis}')
-            continue
+            if disind % 20 == 0:
+                report_time(f'  Currently working on {disind}-th disease {dis} (Out of {len_diseases_list})')
 
-        # Prep the RWR tables for the usage later:
-        itcs_rwr_df_dis_overthres = \
-            save_rwr_dis_df_vals_overthres(
-                dis, itcs_rwr_df, disgenes_list, rwr_base_med,
-                itc_rwr_seed_save_raw_dir_disgenes,
-                itc_rwr_seed_save_raw_dir_disgenes_overthres)
-        
-        # Repeat for the random cases
-        rand_rwr_seed_save_raw_dir_disgenes_dis = \
-            f"{rand_rwr_seed_save_raw_dir_disgenes}/{dis}"
-        create_dir_if_absent(rand_rwr_seed_save_raw_dir_disgenes_dis)
+            #   Acquire disease gene list
+            disgenes_list = \
+                get_disease_related_genes(disgenes_df, dis)
+            
+            #       Check if none of the disease genes exist in the network
+            check_disgenes = set(all_nodes_list).intersection(set(disgenes_list))
 
-        rand_rwr_seed_save_raw_dir_disgenes_overthres_dis = \
-            f"{rand_rwr_seed_save_raw_dir_disgenes_overthres}/{dis}"
-        create_dir_if_absent(rand_rwr_seed_save_raw_dir_disgenes_overthres_dis)
+            if len(check_disgenes) == 0:
+                report_time(f'  No disease genes in the current network for {dis}')
+                continue
 
-        input_listolist = \
-            [[disgenes_list, cur_ind, rwr_base_med,
-                    rand_rwr_seed_save_raw_dir, 
-                    rand_rwr_seed_save_raw_dir_disgenes_dis,
-                    rand_rwr_seed_save_raw_dir_disgenes_overthres_dis] 
-                        for cur_ind in range(100)]
+            # Prep the RWR tables for the usage later:
+            itcs_rwr_df_dis_overthres = \
+                save_rwr_dis_df_vals_overthres(
+                    dis, itcs_rwr_df, disgenes_list, rwr_base_med,
+                    itc_rwr_seed_save_raw_dir_disgenes,
+                    itc_rwr_seed_save_raw_dir_disgenes_overthres)
+            
+            # Repeat for the random cases
+            rand_rwr_norm_df_list = \
+                collect_random_for_cur_dis(
+                    dis, rand_rwr_seed_save_raw_dir, rand_rwr_seed_save_raw_dir_disgenes, disgenes_list, parallel_num)
 
-        pool = Pool(50)
-        random_rwr_df_dis_overthres_list = \
-            pool.map(acquire_random_for_cur_dis, input_listolist)
+            # Random-normalize the RWR values
+            rwr_disgenes_sum_vals_df_normalized = \
+                random_normalize_itcs_rwr(
+                    dis, itcs_list, itcs_rwr_df_dis_overthres, rand_rwr_norm_df_list, parallel_num)
+            disgenes_rwr_norm_df_list.append(rwr_disgenes_sum_vals_df_normalized)
+
+        # Collect for all diseases
+        disgenes_rwr_norm_df = multiple_vertical_concat(disgenes_rwr_norm_df_list)
+        pd_to_csv(disgenes_rwr_norm_df, disgenes_rwr_norm_df_list_dir)
+
+    else:
+        disgenes_rwr_norm_df = csv_to_pd(disgenes_rwr_norm_df_list_dir, indcol=0)
+
+    """ Find disease-specific ITCs """
+    report_time(f'Acquiring ITCs with relatively high normalized-RWR values for each disease')
+    
+    pool = Pool(parallel_num)
+    gdei_input_listolist = \
+        [[sl, dis_df_norm_sig] for sl in seed_list]
+    cur_sl_df_list = \
+        pool.map(get_diseases_for_each_ioc, gdei_input_listolist)
+    
+    diseases_per_ioc_df_dict = \
+        {seed_list[csdlind]: csdl for csdlind, csdl in enumerate(cur_sl_df_list)}
+    
+    save_as_pickle(diseases_per_ioc_df_dict, dis_for_each_ioc_dir_dataframe)
 
     return
