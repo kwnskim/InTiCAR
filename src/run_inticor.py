@@ -52,12 +52,21 @@ def run_inticor(**kwargs):
     cur_res_dir_comparison = f'{cur_res_dir}/B_comparison'
     create_dir_if_absent(cur_res_dir_comparison)
 
-    dis_to_ioc_df_dict = \
+    disgenes_rwr_norm_df = \
         compare_rwr_at_dg_from_itcs_rgs(
             cur_res_dir, cur_res_dir_rwr, cur_res_dir_comparison, 
             itcs_list, all_nodes_list, diseases_list, disgenes_df,
-            rwr_base_med, zthres, parallel_num)
+            rwr_base_med, parallel_num)
 
+    """ Find disease-specific ITCs """
+    cur_res_dir_dis_spe_itcs = f'{cur_res_dir}/C_disease_specific_ITCs'
+    create_dir_if_absent(cur_res_dir_dis_spe_itcs)
+    
+    disease_specific_itcs_dict = \
+        acquire_disease_specific_itcs(
+            cur_res_dir_dis_spe_itcs, itcs_list, diseases_list, 
+            disgenes_rwr_norm_df, zthres, parallel_num)
+    
     return 
 
 

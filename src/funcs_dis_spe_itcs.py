@@ -381,6 +381,10 @@ def get_itcs_df_for_each_disease(input_list):
         cur_dis_sl_df_list.append(cur_sd_df_modz)
     
     cur_dis_sl_df = multiple_vertical_concat(cur_dis_sl_df_list)
+    cur_dis_sl_df.sort_values(by=[cur_dis], ascending=False, inplace=True)
+    cur_dis_sl_df.reset_index(inplace=True)
+    cur_dis_sl_df.rename(
+        columns={'index': 'IOC(s)', cur_dis: 'modZ value'}, inplace=True)
 
     return cur_dis_sl_df
 
@@ -388,7 +392,7 @@ def get_itcs_df_for_each_disease(input_list):
 def compare_rwr_at_dg_from_itcs_rgs(
         cur_res_dir, cur_res_dir_rwr, cur_res_dir_comparison, 
         itcs_list, all_nodes_list, diseases_list, disgenes_df, 
-        rwr_base_med, zthres, parallel_num):
+        rwr_base_med, parallel_num):
 
     """ Prep dirs """
     #   RWR dataframe collection
@@ -418,10 +422,6 @@ def compare_rwr_at_dg_from_itcs_rgs(
     #   Normalized RWR
     comparison_collection_dir = f"{cur_res_dir_comparison}/RWR_Normalized"
     create_dir_if_absent(comparison_collection_dir)
-
-    #   Disease-specific ITCs
-    dis_spe_itcs_dir = f"{cur_res_dir_comparison}/RWR_Normalized_Disease_Specific_ITCs"
-    create_dir_if_absent(dis_spe_itcs_dir)
 
     """ Prep RWR from all acquired from A """
     rwr_file_temp = f'{cur_res_dir_rwr}/RWR_result_dict_##cur_num##.pickle'
@@ -492,12 +492,17 @@ def compare_rwr_at_dg_from_itcs_rgs(
     else:
         disgenes_rwr_norm_df = csv_to_pd(disgenes_rwr_norm_df_list_dir, indcol=0)
 
-    """ Find disease-specific ITCs """
+    return disgenes_rwr_norm_df
+
+
+def acquire_disease_specific_itcs(
+        cur_res_dir_dis_spe_itcs, itcs_list, diseases_list, disgenes_rwr_norm_df, zthres, parallel_num):
+    
     report_time(f'Acquiring ITCs with relatively high normalized-RWR values for each disease')
     
     # Compare between diseases based on modified Z-score
     dis_for_each_itc_dir_dataframe = \
-        f'{dis_spe_itcs_dir}/modz_diseases_for_each_ITC_dataframe.pickle'
+        f'{cur_res_dir_dis_spe_itcs}/modz_diseases_for_each_ITC_dataframe.pickle'
     
     pool = Pool(parallel_num)
     gdei_input_listolist = \
@@ -512,7 +517,7 @@ def compare_rwr_at_dg_from_itcs_rgs(
     
     # Re-organize to find ITCs per disease
     itc_for_each_dis_dir_dataframe_norm = \
-        f'{dis_spe_itcs_dir}/specific_ITCs_for_each_disease_dataframe.pickle'
+        f'{cur_res_dir_dis_spe_itcs}/modz_ITCs_for_each_disease_dataframe.pickle'
 
     pool = Pool(parallel_num)
     gid_input_listolist = \
@@ -528,7 +533,21 @@ def compare_rwr_at_dg_from_itcs_rgs(
     save_as_pickle(dis_to_ioc_df_dict, itc_for_each_dis_dir_dataframe_norm)
     
     # Apply threshold
-    report_time(f'  Applying the z-threshold')
+    report_time(f'  Applying the z-threshold {zthres}')
     
-
-    return dis_to_ioc_df_dict
+    spe_itc_for_each_dis_dir_dataframe_norm = \
+        f'{cur_res_dir_dis_spe_itcs}/specific_ITCs_for_each_disease_dataframe.pickle'
+    disease_specific_itcs_dict = dict()
+    
+    for cur_dis in diseases_list:
+        
+        cur_dis_df = dis_to_ioc_df_dict[cur_dis]
+        
+        zthres_mask = cur_dis_df['modZ value'] >= zthres
+        cur_dis_df_zthres = cur_dis_df[zthres_mask]
+        
+        disease_specific_itcs_dict[cur_dis] = cur_dis_df_zthres
+    
+    save_as_pickle(disease_specific_itcs_dict, spe_itc_for_each_dis_dir_dataframe_norm)
+    
+    return disease_specific_itcs_dict
