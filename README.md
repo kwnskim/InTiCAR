@@ -40,3 +40,5 @@ The input arguments are the following:
 ## The example command to run InTiCoR: </br>
 
 ./run_inticor.py -b {dir_for_network}/my_network.csv -g {dir_for_gene_of_interest}/my_GOI.csv -p 20
+
+The whole process can take up to a day. We made sure to report the time for each step while the code is running, so you can check which point of the process you are in.

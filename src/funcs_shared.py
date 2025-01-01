@@ -83,6 +83,10 @@ def multiple_horizontal_concat(df_list):
     return pd.concat(df_list, axis=1)
 
 
+def multiple_vertical_concat(df_list, igind=False):
+    return pd.concat(df_list, axis=0, ignore_index=igind)
+
+
 def acquire_file_list_in_dir(cur_dir, full_dir=True):
 
     if full_dir:
