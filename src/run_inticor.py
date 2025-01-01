@@ -27,11 +27,23 @@ def run_inticor(**kwargs):
 
     """ Prep variables """
     background_network_name = background_network_dir.rsplit('/', 1)[1].split('.')[0]
+    
     genes_of_interest_name = genes_of_interest_list_dir.rsplit('/', 1)[1].split('.')[0]
     genes_of_interest_list = acquire_list_from_file(genes_of_interest_list_dir)
-    itcs_list = acquire_list_from_file(itcs_list_dir); itcs_list.sort()
+    
+    itcs_list_dir = '../prep_files/ITCs_list.csv'
+    itcs_list = acquire_list_from_file(itcs_list_dir)
+    
     disgenes_df = csv_to_pd(disgenes_df_dir)
     diseases_list, disgenes_df = prep_diseases_n_disgenes(disgenes_df)
+    
+    # Add the user's query
+    diseases_list.append(genes_of_interest_name)
+    queried_df = \
+        pd.DataFrame([genes_of_interest_name, genes_of_interest_list], 
+                        columns=['Disease', 'Genes'])
+    disgenes_df = multiple_vertical_concat([disgenes_df, queried_df])
+    
     rwr_base_med = 2.2883992816268055e-05
 
     """ Prep dirs """
@@ -66,6 +78,13 @@ def run_inticor(**kwargs):
         acquire_disease_specific_itcs(
             cur_res_dir_dis_spe_itcs, itcs_list, diseases_list, 
             disgenes_rwr_norm_df, zthres, parallel_num)
+        
+    """ Return the ITCs for the queried genes """
+    genes_of_interest_itcs = \
+        disease_specific_itcs_dict[genes_of_interest_name]
+    
+    pd_to_csv(genes_of_interest_itcs, 
+                f'{cur_res_dir}/ITCs_for_{genes_of_interest_name}.csv')
     
     return 
 
@@ -85,7 +104,7 @@ if __name__ == '__main__':
     
     parser.add_argument("-g", "--disease_genes_of_interest", 
                             help="Provide the directory with the list of genes related to the disease of interest",
-                            type=str, default='../prep_files/example_genes_of_interest.csv')
+                            type=str, default='../prep_files/example_GOI.csv')
 
     parser.add_argument("-d", "--disease_genes_full_collection", 
                             help="Provide the directory with collection of genes for all available diseases",
