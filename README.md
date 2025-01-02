@@ -1,8 +1,7 @@
-# InTiCoR
-
-We developed a network analysis method to find Inter-Tissue Communicators from heterogeneous network by Random walk with Restart (InTiCoR).
-
-This repository shares a executable tool to run InTiCOHR for the user's choice of network, inter-tissue communicators, and genes of interest (e.g. disease genes).
+# InTiCAR
+![Figure_1_for_Github](https://github.com/user-attachments/assets/e562726c-d735-4d91-8184-43bc3c964ced)
+We developed a network analysis method to find Inter-Tissue Communicators for Autoimmune diseases by Random walk with restart (InTiCAR).
+This repository shares a executable tool to run InTiCAR for the user's choice of network, inter-tissue communicators, and genes of interest (e.g. disease genes).
 
 ## Systems Requirements
 
