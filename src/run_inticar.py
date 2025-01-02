@@ -16,7 +16,7 @@ sys.path.append('../')
 
 
 """ Main function """
-def run_inticor(**kwargs):
+def run_inticar(**kwargs):
 
     """ Prep kwargs """
     background_network_dir = kwargs['background_network']
@@ -94,7 +94,7 @@ if __name__ == '__main__':
 
     # Argument parsing
     parser = argparse.ArgumentParser(
-                description="Run InTiCoR to acquire specific inter-tissue communicators for a given set of genes from a given in-silico biological network. \
+                description="Run InTiCAR to acquire specific inter-tissue communicators for a given set of genes from a given in-silico biological network. \
                                 Please make sure to check the instruction on the repository before running.",
                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
@@ -122,4 +122,4 @@ if __name__ == '__main__':
     args_vars = vars(args)
 
     # Pass on the arguments into the function
-    run_inticor(**args_vars)
+    run_inticar(**args_vars)

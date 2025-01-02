@@ -1,4 +1,5 @@
 # InTiCAR
+
 ![Figure_1_for_Github](https://github.com/user-attachments/assets/5964d5aa-7665-40fc-be30-f144db5db6f2)
 </br>
 We developed a network analysis method to find Inter-Tissue Communicators for Autoimmune diseases by Random walk with restart (InTiCAR).
@@ -19,10 +20,10 @@ Required packages
 
 ## Input Files Descriptions
 
-The following files are required to run InTiCoHR for the interested researchers: </br>
+The following files are required to run InTiCAR for the interested researchers: </br>
 The delimeters for all files are '|'. </br>
 The example files are provided in the directory "prep_files". </br>
-You can simply prepare your own version of files as needed, and add their file names as arguments when running InTiCoR.
+You can simply prepare your own version of files as needed, and add their file names as arguments when running InTiCAR.
 
 The input arguments are the following:
 
@@ -37,8 +38,8 @@ The input arguments are the following:
 - <strong>parallel_num (-p)</strong> </br> A number of cores to use for the parallel processing. </br> Default set as 50.
   </br>
 
-## The example command to run InTiCoR: </br>
+## The example command to run InTiCAR: </br>
 
-./run_inticor.py -b {dir_for_network}/my_network.csv -g {dir_for_gene_of_interest}/my_GOI.csv -p 20
+./run_inticar.py -b {dir_for_network}/my_network.csv -g {dir_for_gene_of_interest}/my_GOI.csv -p 20
 
 The whole process can take up to a day. We made sure to report the time for each step while the code is running, so you can check which point of the process you are in.
