@@ -1,5 +1,6 @@
 # InTiCAR
-![Figure_1_for_Github](https://github.com/user-attachments/assets/e562726c-d735-4d91-8184-43bc3c964ced)
+![Figure_1_for_Github](https://github.com/user-attachments/assets/5964d5aa-7665-40fc-be30-f144db5db6f2)
+</br>
 We developed a network analysis method to find Inter-Tissue Communicators for Autoimmune diseases by Random walk with restart (InTiCAR).
 This repository shares a executable tool to run InTiCAR for the user's choice of network, inter-tissue communicators, and genes of interest (e.g. disease genes).
 
