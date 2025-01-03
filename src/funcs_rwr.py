@@ -36,18 +36,25 @@ def run_rwr_into_df_for_save(cur_input):
 
 
 def prep_all_rwr_results(
-        background_network_dir, cur_res_dir, cur_res_dir_rwr, parallel_num):
+        background_network_dir, background_network_name,
+        cur_res_dir, cur_res_dir_rwr, itcs_list, parallel_num):
+
+    report_time(f"Prepping the RWR results for {background_network_name}")
 
     # Prep background network
-    background_network_df = \
-        pd.read_csv(background_network_dir, sep='|', header=True)
-    background_network = \
+    background_network_df = csv_to_pd(background_network_dir)
+    background_network_raw = \
         nx.from_pandas_edgelist(background_network_df, 'Gene_1_ENSG', 'Gene_2_ENSG')
-
+    background_network_gcc = \
+        sorted(nx.connected_components(background_network_raw), key=len, reverse=True)
+    background_network = \
+        background_network_raw.subgraph(background_network_gcc[0])
+    
     # Prep all nodes as seeds
     seed_list = list(background_network.nodes())
     seed_list.sort()
     all_nodes_list = seed_list.copy()
+    itcs_list = [il for il in itcs_list if il in seed_list] # Use only those available in the network
 
     #   Split seed list for reference to recall the result from each seed later
     seed_list_pieces = split_to_size_n(seed_list, 100)
@@ -63,7 +70,8 @@ def prep_all_rwr_results(
 
         if not check_if_file_exists(slp_rwr_dict_dir):
             
-            report_time(f"Getting {slpind}-th set of RWR results for {background_network}")
+            if slpind%10 == 0:
+                report_time(f"Getting {slpind}-th set of ITCs")
             slp_rwr_dict = dict()
 
             p = Pool(parallel_num)
@@ -77,10 +85,10 @@ def prep_all_rwr_results(
             save_as_pickle(slp_rwr_dict, slp_rwr_dict_dir)
 
         else:
-            report_time(f"Getting {slpind}-th set of RWR results for {background_network} already done.")
+            report_time(f"Getting {slpind}-th set of RWR results for {background_network_name} already done.")
 
     # Save the reference table
     reference_df = pd_from_listolist(reference_df_listolist, colnames=reference_df_cols)
     pd_to_csv(reference_df, f'{cur_res_dir}/reference.csv')
 
-    return all_nodes_list
+    return all_nodes_list, itcs_list

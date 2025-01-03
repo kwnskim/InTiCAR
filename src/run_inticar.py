@@ -6,6 +6,8 @@ Prep the paths and libraries
 import os
 import sys
 import argparse
+import warnings
+warnings.filterwarnings('ignore')
 
 from funcs_shared import *
 from funcs_rwr import *
@@ -40,7 +42,7 @@ def run_inticar(**kwargs):
     # Add the user's query
     diseases_list.append(genes_of_interest_name)
     queried_df = \
-        pd.DataFrame([genes_of_interest_name, genes_of_interest_list], 
+        pd.DataFrame([[genes_of_interest_name, genes_of_interest_list]], 
                         columns=['Disease', 'Genes'])
     disgenes_df = multiple_vertical_concat([disgenes_df, queried_df])
     
@@ -50,15 +52,16 @@ def run_inticar(**kwargs):
     res_upper_dir = "../results"
     create_dir_if_absent(res_upper_dir)
 
-    cur_res_dir = f'{res_upper_dir}/{background_network_name}_{genes_of_interest_name}'
+    cur_res_dir = f'{res_upper_dir}/{background_network_name}___{genes_of_interest_name}'
     create_dir_if_absent(cur_res_dir)
 
     """ Run RWRs for all genes as seeds & save for efficient analyses """
     cur_res_dir_rwr = f'{cur_res_dir}/A_rwr_collection'
     create_dir_if_absent(cur_res_dir_rwr)
 
-    all_nodes_list = \
-        prep_all_rwr_results(background_network_dir, cur_res_dir, cur_res_dir_rwr, parallel_num)
+    all_nodes_list, itcs_list = \
+        prep_all_rwr_results(background_network_dir, background_network_name, 
+                                cur_res_dir, cur_res_dir_rwr, itcs_list, parallel_num)
 
     """ Compare RWR values at the diseases genes from ITCs and Random genes """
     cur_res_dir_comparison = f'{cur_res_dir}/B_comparison'
