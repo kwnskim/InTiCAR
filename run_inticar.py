@@ -9,16 +9,20 @@ import argparse
 import warnings
 warnings.filterwarnings('ignore')
 
+os.chdir('.')
+sys.path.append('./')
+sys.path.append('./src')
+sys.path.append('./prep_files')
+
 from funcs_shared import *
 from funcs_rwr import *
 from funcs_dis_spe_itcs import *
 
-os.chdir('.')
-sys.path.append('../')
-
 
 """ Main function """
 def run_inticar(**kwargs):
+
+    report_time(f'Initiating InTiCAR')
 
     """ Prep kwargs """
     background_network_dir = kwargs['background_network']
@@ -33,7 +37,7 @@ def run_inticar(**kwargs):
     genes_of_interest_name = genes_of_interest_list_dir.rsplit('/', 1)[1].split('.')[0]
     genes_of_interest_list = acquire_list_from_file(genes_of_interest_list_dir)
     
-    itcs_list_dir = '../prep_files/ITCs_list.csv'
+    itcs_list_dir = './prep_files/ITCs_list.csv'
     itcs_list = acquire_list_from_file(itcs_list_dir)
     
     disgenes_df = csv_to_pd(disgenes_df_dir)
@@ -49,7 +53,7 @@ def run_inticar(**kwargs):
     rwr_base_med = 2.2883992816268055e-05
 
     """ Prep dirs """
-    res_upper_dir = "../results"
+    res_upper_dir = "./results"
     create_dir_if_absent(res_upper_dir)
 
     cur_res_dir = f'{res_upper_dir}/{background_network_name}___{genes_of_interest_name}'
@@ -79,7 +83,7 @@ def run_inticar(**kwargs):
     
     disease_specific_itcs_dict = \
         acquire_disease_specific_itcs(
-            cur_res_dir_dis_spe_itcs, itcs_list, diseases_list, 
+            cur_res_dir_dis_spe_itcs, itcs_list, 
             disgenes_rwr_norm_df, zthres, parallel_num)
         
     """ Return the ITCs for the queried genes """
@@ -89,6 +93,8 @@ def run_inticar(**kwargs):
     pd_to_csv(genes_of_interest_itcs, 
                 f'{cur_res_dir}/ITCs_for_{genes_of_interest_name}.csv')
     
+    report_time(f'Done with InTiCAR for {genes_of_interest_name} from the network {background_network_name}')
+
     return 
 
 
@@ -103,15 +109,15 @@ if __name__ == '__main__':
 
     parser.add_argument("-b", "--background_network", 
                             help="Provide the directory for the background network",
-                            type=str, default='../prep_files/example_network.csv')
+                            type=str, default='./prep_files/example_network.csv')
     
     parser.add_argument("-g", "--disease_genes_of_interest", 
                             help="Provide the directory with the list of genes related to the disease of interest",
-                            type=str, default='../prep_files/example_GOI.csv')
+                            type=str, default='./prep_files/example_GOI.csv')
 
     parser.add_argument("-d", "--disease_genes_full_collection", 
                             help="Provide the directory with collection of genes for all available diseases",
-                            type=str, default='../prep_files/DiseaseGenes_parsed.csv')
+                            type=str, default='./prep_files/DiseaseGenes_parsed.csv')
 
     parser.add_argument("-t", "--modified_z_threshold", 
                         help="Provide the threshold for modified z-score",

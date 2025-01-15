@@ -38,9 +38,12 @@ The input arguments are the following:
 - <strong>parallel_num (-p)</strong> </br> A number of cores to use for the parallel processing. </br> Parallel processing is highly recommended. </br> Default set as 50.
   </br>
 
-## The example command to run InTiCAR: </br>
+## The example command to run InTiCAR:
 
-(At the ./src directory...) </br>
-./run_inticar.py -b {dir_for_network}/my_network.csv -g {dir_for_gene_of_interest}/my_GOI.csv -p 20
+python run_inticar.py -b {dir_for_network}/my_network.csv -g {dir_for_gene_of_interest}/my_GOI.csv -p 20
 
 Currently, the whole process can take days depending on the size of the given network. There may be updates to optimize the tool further. In the mean time, we made sure to report the time for each step while the code is running, so you can check which point of the process you are in.
+
+## Updates
+
+2025 / 01 / 15 - Fixed a potential error that can occur when there are diseases with genes not present in the given network

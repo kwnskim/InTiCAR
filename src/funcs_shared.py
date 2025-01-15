@@ -35,6 +35,13 @@ def create_dir_if_absent(req_dir):
     return 
 
 
+def flatten_lol(listoflists):
+
+    flattened = \
+        [item for sublist in listoflists for item in sublist]
+    
+    return flattened
+
 def save_as_pickle(data, file_name):
     with open(file_name, 'wb') as f:
         pk.dump(data, f, pk.HIGHEST_PROTOCOL)

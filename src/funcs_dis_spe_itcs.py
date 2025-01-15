@@ -254,28 +254,37 @@ def acquire_random_for_cur_dis(input_list):
 
 def collect_random_for_cur_dis(
         dis, rand_rwr_seed_save_raw_dir, rand_rwr_seed_save_raw_dir_disgenes, disgenes_list, parallel_num):
+    
+    #   Load if this list was acquired once.
+    rand_rwr_norm_df_list_dir = \
+        f'{rand_rwr_seed_save_raw_dir_disgenes}/{dis}_random.pickle'
+    
+    if not check_if_file_exists(rand_rwr_norm_df_list_dir):
 
-    rand_rwr_seed_save_raw_dir_disgenes_dis = \
-        f"{rand_rwr_seed_save_raw_dir_disgenes}/{dis}"
-    create_dir_if_absent(rand_rwr_seed_save_raw_dir_disgenes_dis)
+        rand_rwr_seed_save_raw_dir_disgenes_dis = \
+            f"{rand_rwr_seed_save_raw_dir_disgenes}/{dis}"
+        create_dir_if_absent(rand_rwr_seed_save_raw_dir_disgenes_dis)
 
-    input_listolist = \
-        [[disgenes_list, cur_ind, 
-            rand_rwr_seed_save_raw_dir, 
-            rand_rwr_seed_save_raw_dir_disgenes_dis] 
-                for cur_ind in range(100)]
+        input_listolist = \
+            [[disgenes_list, cur_ind, 
+                rand_rwr_seed_save_raw_dir, 
+                rand_rwr_seed_save_raw_dir_disgenes_dis] 
+                    for cur_ind in range(100)]
 
-    pool = Pool(parallel_num)
-    rand_rwr_norm_df_list = \
-        pool.map(acquire_random_for_cur_dis, input_listolist)
+        pool = Pool(parallel_num)
+        rand_rwr_norm_df_list = \
+            pool.map(acquire_random_for_cur_dis, input_listolist)
+        
+        save_as_pickle(rand_rwr_norm_df_list, rand_rwr_norm_df_list_dir)
+    
+    else:
+        rand_rwr_norm_df_list = \
+            import_pickle(rand_rwr_norm_df_list_dir)
 
     return rand_rwr_norm_df_list
 
 
-def acquire_random_rwr_dis_sum_vals(input_list):
-
-    # Parse input
-    dis, cur_random_rwr_dis_df = input_list
+def acquire_random_rwr_dis_sum_vals(dis, cur_random_rwr_dis_df):
 
     #   Get rid of "random genes" that are also one of the disease genes
     cur_dgs = cur_random_rwr_dis_df.index.tolist()
@@ -293,55 +302,65 @@ def acquire_random_rwr_dis_sum_vals(input_list):
     return cur_random_rwr_dis_sum_vals_list
 
 
+def collect_rwr_dis_sum_vals_per_itc(input_list):
+
+    # Parse inputs
+    cur_itc, dis, itcs_rwr_df_dis_overthres, rand_rwr_norm_df_list = input_list
+
+    # Prep the values for the given ITC
+    rwr_df_dis_cur_itc = itcs_rwr_df_dis_overthres[[cur_itc]]
+    rwr_df_dis_cur_itc.dropna(inplace=True)
+    rwr_df_dis_cur_itc.loc[dis] = rwr_df_dis_cur_itc.sum()
+    cur_itc_rwr_disgenes_sum = rwr_df_dis_cur_itc.loc[[dis]]
+
+    # Prep the values from the random genes
+    cur_itc_rwr_random_sum_vals_listolist = list()
+
+    for cur_random_rwr_dis_df in rand_rwr_norm_df_list:
+        cur_itc_cur_random_rwr_sum_vals = \
+            acquire_random_rwr_dis_sum_vals(dis, cur_random_rwr_dis_df)
+        cur_itc_rwr_random_sum_vals_listolist.append(cur_itc_cur_random_rwr_sum_vals)
+    
+    cur_itc_rwr_random_sum_vals_list = \
+        flatten_lol(cur_itc_rwr_random_sum_vals_listolist)
+    
+    #   Deal with the collection of mean vals
+    cur_itc_rwr_random_sum_vals_average = \
+        np.mean(cur_itc_rwr_random_sum_vals_list)
+        
+    return cur_itc_rwr_disgenes_sum, cur_itc_rwr_random_sum_vals_average
+
+
 def random_normalize_itcs_rwr(
         dis, itcs_list, itcs_rwr_df_dis_overthres, rand_rwr_norm_df_list, parallel_num):
 
-    rwr_disgenes_sum_vals_df_list = list()
-    rwr_random_sum_vals_average_dict = dict()
+    # Normalize with random
+    input_listolist = \
+        [[cur_itc, dis, itcs_rwr_df_dis_overthres, rand_rwr_norm_df_list] 
+            for cur_itc in itcs_list]
 
-    #       Normalize with random
-    for cur_itc in itcs_list:
-        
-        # Prep the values for the given ITC
-        rwr_df_dis_cur_itc = itcs_rwr_df_dis_overthres[[cur_itc]]
-        rwr_df_dis_cur_itc.dropna(inplace=True)
-        rwr_df_dis_cur_itc.loc[dis] = rwr_df_dis_cur_itc.sum()
-        cur_itc_rwr_disgenes_sum = rwr_df_dis_cur_itc.loc[[dis]]
-        rwr_disgenes_sum_vals_df_list.append(cur_itc_rwr_disgenes_sum)
-
-        # Prep the values from the random genes
-        cur_itc_rwr_random_sum_vals_list = list()
-
-        input_listolist = \
-            [[dis, cur_random_rwr_dis_df]
-                for cur_random_rwr_dis_df in rand_rwr_norm_df_list]
-
-        pool = Pool(parallel_num)
-        cur_itc_cur_random_rwr_dis_sum_vals_list = \
-            pool.map(acquire_random_rwr_dis_sum_vals, input_listolist)
-        
-        for cur_itc_cur_random_rwr_sum_vals in cur_itc_cur_random_rwr_dis_sum_vals_list:
-            cur_itc_rwr_random_sum_vals_list = \
-                cur_itc_rwr_random_sum_vals_list + cur_itc_cur_random_rwr_sum_vals
-        
-        #   Deal with the collection of mean vals
-        cur_itc_rwr_random_sum_vals_average = \
-            np.mean(cur_itc_rwr_random_sum_vals_list)
-        rwr_random_sum_vals_average_dict[cur_itc] = \
-            cur_itc_rwr_random_sum_vals_average
+    pool = Pool(parallel_num)
+    collected_rwr_dis_sum_vals_per_itc = \
+        pool.map(collect_rwr_dis_sum_vals_per_itc, input_listolist)
+    
+    rwr_itcs_sum_vals_df_list = \
+        [crd[0] for crd in collected_rwr_dis_sum_vals_per_itc]
+    rwr_random_sum_vals_average_dict = \
+        {itcs_list[crdind]: crd[1] 
+            for crdind, crd in enumerate(collected_rwr_dis_sum_vals_per_itc)}
     
     # Orgainze the result from all ITCs
-    rwr_disgenes_sum_vals_df = multiple_horizontal_concat(rwr_disgenes_sum_vals_df_list)
+    rwr_itcs_sum_vals_df = multiple_horizontal_concat(rwr_itcs_sum_vals_df_list)
 
     # Normalize with the average values from random, then add to collection
-    rwr_disgenes_sum_vals_df_normalized = rwr_disgenes_sum_vals_df.copy()
+    rwr_itcs_sum_vals_df_normalized = rwr_itcs_sum_vals_df.copy()
 
     for cur_itc in itcs_list:
-        rwr_disgenes_sum_vals_df_normalized[cur_itc] = \
-            rwr_disgenes_sum_vals_df_normalized[cur_itc].apply(
+        rwr_itcs_sum_vals_df_normalized[cur_itc] = \
+            rwr_itcs_sum_vals_df_normalized[cur_itc].apply(
                 lambda x: x/rwr_random_sum_vals_average_dict[cur_itc])
 
-    return rwr_disgenes_sum_vals_df_normalized
+    return rwr_itcs_sum_vals_df_normalized
 
 
 def get_diseases_for_each_itc(input_list):
@@ -416,9 +435,6 @@ def compare_rwr_at_dg_from_itcs_rgs(
     rand_rwr_seed_save_raw_dir_disgenes = f"{rand_rwr_seed_save_dir}/DiseaseGenes"
     create_dir_if_absent(rand_rwr_seed_save_raw_dir_disgenes)
 
-    rand_rwr_seed_save_raw_dir_disgenes_overthres = f"{rand_rwr_seed_save_dir}/DiseaseGenes_Overthres"
-    create_dir_if_absent(rand_rwr_seed_save_raw_dir_disgenes_overthres)
-
     #   Normalized RWR
     comparison_collection_dir = f"{cur_res_dir_comparison}/RWR_Normalized"
     create_dir_if_absent(comparison_collection_dir)
@@ -480,14 +496,14 @@ def compare_rwr_at_dg_from_itcs_rgs(
                     dis, rand_rwr_seed_save_raw_dir, rand_rwr_seed_save_raw_dir_disgenes, disgenes_list, parallel_num)
 
             # Random-normalize the RWR values
-            rwr_disgenes_sum_vals_df_normalized = \
+            rwr_itcs_sum_vals_df_normalized = \
                 random_normalize_itcs_rwr(
                     dis, itcs_list, itcs_rwr_df_dis_overthres, rand_rwr_norm_df_list, parallel_num)
-            disgenes_rwr_norm_df_list.append(rwr_disgenes_sum_vals_df_normalized)
+            disgenes_rwr_norm_df_list.append(rwr_itcs_sum_vals_df_normalized)
 
         # Collect for all diseases
         disgenes_rwr_norm_df = multiple_vertical_concat(disgenes_rwr_norm_df_list)
-        pd_to_csv(disgenes_rwr_norm_df, disgenes_rwr_norm_df_list_dir)
+        pd_to_csv(disgenes_rwr_norm_df, disgenes_rwr_norm_df_list_dir, inbool=True)
 
     else:
         disgenes_rwr_norm_df = csv_to_pd(disgenes_rwr_norm_df_list_dir, indcol=0)
@@ -496,7 +512,7 @@ def compare_rwr_at_dg_from_itcs_rgs(
 
 
 def acquire_disease_specific_itcs(
-        cur_res_dir_dis_spe_itcs, itcs_list, diseases_list, disgenes_rwr_norm_df, zthres, parallel_num):
+        cur_res_dir_dis_spe_itcs, itcs_list, disgenes_rwr_norm_df, zthres, parallel_num):
     
     report_time(f'Acquiring ITCs with relatively high normalized-RWR values for each disease')
     
@@ -515,6 +531,10 @@ def acquire_disease_specific_itcs(
     
     save_as_pickle(diseases_per_ioc_df_dict, dis_for_each_itc_dir_dataframe)
     
+    # Get a list of available diseases
+    avail_diseases_list = \
+        diseases_per_ioc_df_dict[itcs_list[0]].index.tolist()
+
     # Re-organize to find ITCs per disease
     itc_for_each_dis_dir_dataframe_norm = \
         f'{cur_res_dir_dis_spe_itcs}/modz_ITCs_for_each_disease_dataframe.pickle'
@@ -522,13 +542,13 @@ def acquire_disease_specific_itcs(
     pool = Pool(parallel_num)
     gid_input_listolist = \
         [[cur_dis, diseases_per_ioc_df_dict, itcs_list] 
-            for cur_dis in diseases_list]
+            for cur_dis in avail_diseases_list]
     gid_df_list = \
         pool.map(get_itcs_df_for_each_disease, gid_input_listolist)
 
     dis_to_ioc_df_dict = \
         {cur_dis: gid_df_list[cdind] 
-            for cdind, cur_dis in enumerate(diseases_list)}
+            for cdind, cur_dis in enumerate(avail_diseases_list)}
 
     save_as_pickle(dis_to_ioc_df_dict, itc_for_each_dis_dir_dataframe_norm)
     
@@ -539,7 +559,7 @@ def acquire_disease_specific_itcs(
         f'{cur_res_dir_dis_spe_itcs}/specific_ITCs_for_each_disease_dataframe.pickle'
     disease_specific_itcs_dict = dict()
     
-    for cur_dis in diseases_list:
+    for cur_dis in avail_diseases_list:
         
         cur_dis_df = dis_to_ioc_df_dict[cur_dis]
         
